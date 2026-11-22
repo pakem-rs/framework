@@ -12,6 +12,11 @@ use syn::{parse_macro_input, Attribute, ItemStruct, LitStr};
 /// }
 /// ```
 #[proc_macro_attribute]
+pub fn pakem_form(attr: TokenStream, item: TokenStream) -> TokenStream {
+    lumina_form(attr, item)
+}
+
+#[proc_macro_attribute]
 pub fn lumina_form(_attr: TokenStream, item: TokenStream) -> TokenStream {
     let mut input_struct = parse_macro_input!(item as ItemStruct);
 
@@ -103,21 +108,26 @@ pub fn lumina_form(_attr: TokenStream, item: TokenStream) -> TokenStream {
     TokenStream::from(expanded)
 }
 
-/// Derive macro untuk mengimplementasikan trait Model secara otomatis.
-/// Ini menghilangkan boilerplate SQL manual untuk operasi CRUD standar.
-#[proc_macro_derive(LuminaModel, attributes(table, primary_key, column, lumina, soft_deletes))]
+/// Derive macro untuk mengimplementasikan trait Model secara otomatis di Pakem Framework.
+#[proc_macro_derive(PakemModel, attributes(table, primary_key, column, pakem, lumina, soft_deletes))]
+pub fn pakem_model_derive(input: TokenStream) -> TokenStream {
+    lumina_model_derive(input)
+}
+
+/// Derive macro untuk mengimplementasikan trait Model secara otomatis (Lumina alias).
+#[proc_macro_derive(LuminaModel, attributes(table, primary_key, column, pakem, lumina, soft_deletes))]
 pub fn lumina_model_derive(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as ItemStruct);
     let name = &input.ident;
 
-    // Ambil nama tabel dari atribut #[table("...")] atau #[lumina(table = "...")]
+    // Ambil nama tabel dari atribut #[table("...")] atau #[pakem(table = "...")] / #[lumina(table = "...")]
     let mut table_name = format!("{}s", name.to_string().to_lowercase());
     for attr in &input.attrs {
         if attr.path().is_ident("table") {
             if let Ok(lit) = attr.parse_args::<LitStr>() {
                 table_name = lit.value();
             }
-        } else if attr.path().is_ident("lumina") {
+        } else if attr.path().is_ident("pakem") || attr.path().is_ident("lumina") {
             let _ = attr.parse_nested_meta(|meta| {
                 if meta.path.is_ident("table") {
                     let value = meta.value()?;
@@ -223,7 +233,7 @@ pub fn lumina_model_derive(input: TokenStream) -> TokenStream {
 
     let expanded = quote! {
         #[async_trait::async_trait]
-        impl lumina::database::model::Model for #name {
+        impl ::pakem::database::model::Model for #name {
             const TABLE: &'static str = #table_name;
             const HAS_SOFT_DELETES: bool = #has_deleted_at;
 
@@ -231,8 +241,8 @@ pub fn lumina_model_derive(input: TokenStream) -> TokenStream {
                 self.#primary_key_ident as i64
             }
 
-            async fn find(pool: &lumina::database::connection::DatabasePool, id: i64) -> Result<Self, sqlx::Error> {
-                let is_pg = pool.kind == lumina::database::connection::DatabaseKind::Postgres;
+            async fn find(pool: &::pakem::database::connection::DatabasePool, id: i64) -> Result<Self, sqlx::Error> {
+                let is_pg = pool.kind == ::pakem::database::connection::DatabaseKind::Postgres;
                 let select_cols = if is_pg { #pg_select_fields } else { #select_fields };
                 let sql = format!("SELECT {} FROM {} WHERE {}{}", select_cols, Self::TABLE, #pk_clause, #soft_find);
                 let sql = pool.prepare_sql(&sql);
@@ -242,8 +252,8 @@ pub fn lumina_model_derive(input: TokenStream) -> TokenStream {
                     .await
             }
 
-            async fn all(pool: &lumina::database::connection::DatabasePool) -> Result<Vec<Self>, sqlx::Error> {
-                let is_pg = pool.kind == lumina::database::connection::DatabaseKind::Postgres;
+            async fn all(pool: &::pakem::database::connection::DatabasePool) -> Result<Vec<Self>, sqlx::Error> {
+                let is_pg = pool.kind == ::pakem::database::connection::DatabaseKind::Postgres;
                 let select_cols = if is_pg { #pg_select_fields } else { #select_fields };
                 let sql = format!("SELECT {} FROM {}{} ORDER BY {} DESC", select_cols, Self::TABLE, #soft_all, #primary_key_field);
                 let sql = pool.prepare_sql(&sql);
@@ -253,7 +263,7 @@ pub fn lumina_model_derive(input: TokenStream) -> TokenStream {
             }
 
             /// Simpan record ke database. Jika record memiliki ID > 0, lakukan UPDATE. Jika ID == 0, lakukan INSERT.
-            async fn save(&self, pool: &lumina::database::connection::DatabasePool) -> Result<i64, sqlx::Error> {
+            async fn save(&self, pool: &::pakem::database::connection::DatabasePool) -> Result<i64, sqlx::Error> {
                 if self.#primary_key_ident > 0 {
                     let sql = format!(
                         "UPDATE {} SET {}, updated_at = CURRENT_TIMESTAMP WHERE {}",
@@ -269,7 +279,7 @@ pub fn lumina_model_derive(input: TokenStream) -> TokenStream {
                         .await?;
                     Ok(self.#primary_key_ident)
                 } else {
-                    let is_pg = pool.kind == lumina::database::connection::DatabaseKind::Postgres;
+                    let is_pg = pool.kind == ::pakem::database::connection::DatabaseKind::Postgres;
                     if is_pg {
                         let sql = format!(
                             "INSERT INTO {} ({}) VALUES ({}) RETURNING {}",
@@ -308,7 +318,7 @@ pub fn lumina_model_derive(input: TokenStream) -> TokenStream {
                 }
             }
 
-            async fn delete(pool: &lumina::database::connection::DatabasePool, id: i64) -> Result<bool, sqlx::Error> {
+            async fn delete(pool: &::pakem::database::connection::DatabasePool, id: i64) -> Result<bool, sqlx::Error> {
                 let sql = if #has_deleted_at {
                     format!("UPDATE {} SET deleted_at = CURRENT_TIMESTAMP WHERE {}", Self::TABLE, #pk_clause)
                 } else {
@@ -325,13 +335,13 @@ pub fn lumina_model_derive(input: TokenStream) -> TokenStream {
 
         impl #name {
             /// Ambil semua record aktif (Laravel: Model::all())
-            pub async fn all(pool: &lumina::database::connection::DatabasePool) -> Result<Vec<Self>, sqlx::Error> {
-                <Self as lumina::database::model::Model>::all(pool).await
+            pub async fn all(pool: &::pakem::database::connection::DatabasePool) -> Result<Vec<Self>, sqlx::Error> {
+                <Self as ::pakem::database::model::Model>::all(pool).await
             }
 
             /// Ambil satu record berdasarkan ID. Mengembalikan `Ok(Some(item))` jika ada, `Ok(None)` jika tidak ada (Laravel: Model::find(id)).
-            pub async fn find(pool: &lumina::database::connection::DatabasePool, id: i64) -> Result<Option<Self>, sqlx::Error> {
-                match <Self as lumina::database::model::Model>::find(pool, id).await {
+            pub async fn find(pool: &::pakem::database::connection::DatabasePool, id: i64) -> Result<Option<Self>, sqlx::Error> {
+                match <Self as ::pakem::database::model::Model>::find(pool, id).await {
                     Ok(item) => Ok(Some(item)),
                     Err(sqlx::Error::RowNotFound) => Ok(None),
                     Err(e) => Err(e),
@@ -339,138 +349,138 @@ pub fn lumina_model_derive(input: TokenStream) -> TokenStream {
             }
 
             /// Ambil satu record atau error jika tidak ada (Laravel: Model::findOrFail(id))
-            pub async fn find_or_fail(pool: &lumina::database::connection::DatabasePool, id: i64) -> Result<Self, sqlx::Error> {
-                <Self as lumina::database::model::Model>::find(pool, id).await
+            pub async fn find_or_fail(pool: &::pakem::database::connection::DatabasePool, id: i64) -> Result<Self, sqlx::Error> {
+                <Self as ::pakem::database::model::Model>::find(pool, id).await
             }
 
             /// Hapus record berdasarkan primary key (Laravel: Model::destroy(id))
-            pub async fn destroy(pool: &lumina::database::connection::DatabasePool, id: i64) -> Result<bool, sqlx::Error> {
-                <Self as lumina::database::model::Model>::delete(pool, id).await
+            pub async fn destroy(pool: &::pakem::database::connection::DatabasePool, id: i64) -> Result<bool, sqlx::Error> {
+                <Self as ::pakem::database::model::Model>::delete(pool, id).await
             }
 
             /// Mulai QueryBuilder dinamis (Laravel: Model::query())
-            pub fn query<'a>(pool: &'a lumina::database::connection::DatabasePool) -> lumina::database::orm::QueryBuilder<'a, Self> {
-                <Self as lumina::database::model::Model>::query(pool)
+            pub fn query<'a>(pool: &'a ::pakem::database::connection::DatabasePool) -> ::pakem::database::orm::QueryBuilder<'a, Self> {
+                <Self as ::pakem::database::model::Model>::query(pool)
             }
 
             /// Query dengan kondisi WHERE column = value (Laravel: Model::where('col', 'val'))
-            pub fn where_eq<'a, V>(pool: &'a lumina::database::connection::DatabasePool, column: &'a str, value: V) -> lumina::database::orm::QueryBuilder<'a, Self>
+            pub fn where_eq<'a, V>(pool: &'a ::pakem::database::connection::DatabasePool, column: &'a str, value: V) -> ::pakem::database::orm::QueryBuilder<'a, Self>
             where
                 V: 'a + Send + sqlx::Encode<'a, sqlx::Any> + sqlx::Type<sqlx::Any>,
             {
-                <Self as lumina::database::model::Model>::where_eq(pool, column, value)
+                <Self as ::pakem::database::model::Model>::where_eq(pool, column, value)
             }
 
             /// Shortcut untuk ORDER BY created_at DESC (Laravel: Model::latest())
-            pub fn latest<'a>(pool: &'a lumina::database::connection::DatabasePool) -> lumina::database::orm::QueryBuilder<'a, Self> {
-                <Self as lumina::database::model::Model>::latest(pool)
+            pub fn latest<'a>(pool: &'a ::pakem::database::connection::DatabasePool) -> ::pakem::database::orm::QueryBuilder<'a, Self> {
+                <Self as ::pakem::database::model::Model>::latest(pool)
             }
 
             /// Shortcut WHERE EXISTS relasi (Laravel: Model::whereHas)
             pub fn where_has<'a>(
-                pool: &'a lumina::database::connection::DatabasePool,
+                pool: &'a ::pakem::database::connection::DatabasePool,
                 relation_table: &'a str,
                 foreign_key: &'a str,
                 local_key: &'a str,
-            ) -> lumina::database::orm::QueryBuilder<'a, Self> {
-                <Self as lumina::database::model::Model>::where_has(pool, relation_table, foreign_key, local_key)
+            ) -> ::pakem::database::orm::QueryBuilder<'a, Self> {
+                <Self as ::pakem::database::model::Model>::where_has(pool, relation_table, foreign_key, local_key)
             }
 
             /// Shortcut WHERE NOT EXISTS relasi (Laravel: Model::whereDoesntHave)
             pub fn where_doesnt_have<'a>(
-                pool: &'a lumina::database::connection::DatabasePool,
+                pool: &'a ::pakem::database::connection::DatabasePool,
                 relation_table: &'a str,
                 foreign_key: &'a str,
                 local_key: &'a str,
-            ) -> lumina::database::orm::QueryBuilder<'a, Self> {
-                <Self as lumina::database::model::Model>::where_doesnt_have(pool, relation_table, foreign_key, local_key)
+            ) -> ::pakem::database::orm::QueryBuilder<'a, Self> {
+                <Self as ::pakem::database::model::Model>::where_doesnt_have(pool, relation_table, foreign_key, local_key)
             }
 
             /// Paginasi data langsung dari model (Laravel: Model::paginate(15))
             pub async fn paginate(
-                pool: &lumina::database::connection::DatabasePool,
+                pool: &::pakem::database::connection::DatabasePool,
                 page: usize,
                 per_page: usize,
-            ) -> Result<lumina::database::orm::LengthAwarePaginator<Self>, sqlx::Error> {
-                <Self as lumina::database::model::Model>::paginate(pool, page, per_page).await
+            ) -> Result<::pakem::database::orm::LengthAwarePaginator<Self>, sqlx::Error> {
+                <Self as ::pakem::database::model::Model>::paginate(pool, page, per_page).await
             }
 
             /// Hitung total record aktif (Laravel: Model::count())
-            pub async fn count(pool: &lumina::database::connection::DatabasePool) -> Result<i64, sqlx::Error> {
-                <Self as lumina::database::model::Model>::count(pool).await
+            pub async fn count(pool: &::pakem::database::connection::DatabasePool) -> Result<i64, sqlx::Error> {
+                <Self as ::pakem::database::model::Model>::count(pool).await
             }
 
             /// Simpan perubahan pada instance record ini ke database (Laravel: $model->save())
-            pub async fn save(&self, pool: &lumina::database::connection::DatabasePool) -> Result<i64, sqlx::Error> {
-                <Self as lumina::database::model::Model>::save(self, pool).await
+            pub async fn save(&self, pool: &::pakem::database::connection::DatabasePool) -> Result<i64, sqlx::Error> {
+                <Self as ::pakem::database::model::Model>::save(self, pool).await
             }
 
             /// Soft delete instance record ini (Laravel: $model->delete())
-            pub async fn delete(&self, pool: &lumina::database::connection::DatabasePool) -> Result<bool, sqlx::Error> {
-                <Self as lumina::database::model::Model>::delete(pool, self.#primary_key_ident).await
+            pub async fn delete(&self, pool: &::pakem::database::connection::DatabasePool) -> Result<bool, sqlx::Error> {
+                <Self as ::pakem::database::model::Model>::delete(pool, self.#primary_key_ident).await
             }
 
             /// Soft delete instance record ini (Laravel: $model->soft_delete())
-            pub async fn soft_delete(&self, pool: &lumina::database::connection::DatabasePool) -> Result<bool, sqlx::Error> {
-                <Self as lumina::database::model::Model>::delete(pool, self.#primary_key_ident).await
+            pub async fn soft_delete(&self, pool: &::pakem::database::connection::DatabasePool) -> Result<bool, sqlx::Error> {
+                <Self as ::pakem::database::model::Model>::delete(pool, self.#primary_key_ident).await
             }
 
             /// Pulihkan instance record ini dari soft delete (Laravel: $model->restore())
-            pub async fn restore(&self, pool: &lumina::database::connection::DatabasePool) -> Result<bool, sqlx::Error> {
-                <Self as lumina::database::model::Model>::restore(pool, self.#primary_key_ident).await
+            pub async fn restore(&self, pool: &::pakem::database::connection::DatabasePool) -> Result<bool, sqlx::Error> {
+                <Self as ::pakem::database::model::Model>::restore(pool, self.#primary_key_ident).await
             }
 
             /// Hapus permanen instance record ini dari database (Laravel: $model->forceDelete())
-            pub async fn force_delete(&self, pool: &lumina::database::connection::DatabasePool) -> Result<bool, sqlx::Error> {
-                <Self as lumina::database::model::Model>::force_delete(pool, self.#primary_key_ident).await
+            pub async fn force_delete(&self, pool: &::pakem::database::connection::DatabasePool) -> Result<bool, sqlx::Error> {
+                <Self as ::pakem::database::model::Model>::force_delete(pool, self.#primary_key_ident).await
             }
 
             /// Pulihkan record berdasarkan ID (Laravel: Model::restore(id))
-            pub async fn restore_by_id(pool: &lumina::database::connection::DatabasePool, id: i64) -> Result<bool, sqlx::Error> {
-                <Self as lumina::database::model::Model>::restore(pool, id).await
+            pub async fn restore_by_id(pool: &::pakem::database::connection::DatabasePool, id: i64) -> Result<bool, sqlx::Error> {
+                <Self as ::pakem::database::model::Model>::restore(pool, id).await
             }
 
             /// Hapus permanen record berdasarkan ID (Laravel: Model::forceDelete(id))
-            pub async fn force_delete_by_id(pool: &lumina::database::connection::DatabasePool, id: i64) -> Result<bool, sqlx::Error> {
-                <Self as lumina::database::model::Model>::force_delete(pool, id).await
+            pub async fn force_delete_by_id(pool: &::pakem::database::connection::DatabasePool, id: i64) -> Result<bool, sqlx::Error> {
+                <Self as ::pakem::database::model::Model>::force_delete(pool, id).await
             }
 
             /// Relasi Has Many (Laravel: $this->hasMany(Post::class, 'user_id'))
-            pub async fn has_many<R>(&self, pool: &lumina::database::connection::DatabasePool, foreign_key: &str) -> Result<Vec<R>, sqlx::Error>
+            pub async fn has_many<R>(&self, pool: &::pakem::database::connection::DatabasePool, foreign_key: &str) -> Result<Vec<R>, sqlx::Error>
             where
-                R: lumina::database::model::Model,
+                R: ::pakem::database::model::Model,
             {
-                <Self as lumina::database::model::Model>::has_many::<R>(pool, foreign_key, self.#primary_key_ident).await
+                <Self as ::pakem::database::model::Model>::has_many::<R>(pool, foreign_key, self.#primary_key_ident).await
             }
 
             /// Relasi Has One (Laravel: $this->hasOne(Profile::class, 'user_id'))
-            pub async fn has_one<R>(&self, pool: &lumina::database::connection::DatabasePool, foreign_key: &str) -> Result<R, sqlx::Error>
+            pub async fn has_one<R>(&self, pool: &::pakem::database::connection::DatabasePool, foreign_key: &str) -> Result<R, sqlx::Error>
             where
-                R: lumina::database::model::Model,
+                R: ::pakem::database::model::Model,
             {
-                <Self as lumina::database::model::Model>::has_one::<R>(pool, foreign_key, self.#primary_key_ident).await
+                <Self as ::pakem::database::model::Model>::has_one::<R>(pool, foreign_key, self.#primary_key_ident).await
             }
 
             /// Relasi Belongs To (Laravel: $this->belongsTo(User::class, 'user_id'))
-            pub async fn belongs_to<R>(&self, pool: &lumina::database::connection::DatabasePool, foreign_key_id: i64) -> Result<R, sqlx::Error>
+            pub async fn belongs_to<R>(&self, pool: &::pakem::database::connection::DatabasePool, foreign_key_id: i64) -> Result<R, sqlx::Error>
             where
-                R: lumina::database::model::Model,
+                R: ::pakem::database::model::Model,
             {
-                <Self as lumina::database::model::Model>::belongs_to::<R>(pool, foreign_key_id).await
+                <Self as ::pakem::database::model::Model>::belongs_to::<R>(pool, foreign_key_id).await
             }
 
             /// Relasi Belongs To Many (Laravel: $this->belongsToMany(Tag::class, 'post_tag', 'post_id', 'tag_id'))
             pub async fn belongs_to_many<R>(
                 &self,
-                pool: &lumina::database::connection::DatabasePool,
+                pool: &::pakem::database::connection::DatabasePool,
                 pivot_table: &str,
                 foreign_key: &str,
                 related_key: &str,
             ) -> Result<Vec<R>, sqlx::Error>
             where
-                R: lumina::database::model::Model,
+                R: ::pakem::database::model::Model,
             {
-                <Self as lumina::database::model::Model>::belongs_to_many::<R>(
+                <Self as ::pakem::database::model::Model>::belongs_to_many::<R>(
                     pool,
                     pivot_table,
                     foreign_key,

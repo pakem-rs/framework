@@ -138,7 +138,39 @@ pub fn cmd_clean(purge: bool) {
         }
     }
 
-    // 3. Bersihkan log lama di storage/logs
+    // 3. Bersihkan file symbol .pdb lama di target/debug/deps (Windows debug symbols)
+    let deps_path = Path::new("target/debug/deps");
+    if deps_path.exists() {
+        if let Ok(entries) = fs::read_dir(deps_path) {
+            let mut pdb_count = 0;
+            let mut pdb_bytes = 0u64;
+            for entry in entries.flatten() {
+                let path = entry.path();
+                if path.is_file() {
+                    if let Some(ext) = path.extension().and_then(|e| e.to_str()) {
+                        if ext.eq_ignore_ascii_case("pdb") {
+                            if let Ok(meta) = path.metadata() {
+                                pdb_bytes += meta.len();
+                            }
+                            let _ = fs::remove_file(path);
+                            pdb_count += 1;
+                        }
+                    }
+                }
+            }
+            if pdb_count > 0 {
+                let mb = pdb_bytes as f64 / (1024.0 * 1024.0);
+                println!(
+                    "   {} Berhasil memangkas {} file Windows .pdb debug symbols ({:.1} MB).",
+                    "✅".green(),
+                    pdb_count,
+                    mb
+                );
+            }
+        }
+    }
+
+    // 4. Bersihkan log lama di storage/logs
     let logs_path = Path::new("storage/logs");
     if logs_path.exists() {
         if let Ok(entries) = fs::read_dir(logs_path) {
@@ -179,7 +211,7 @@ pub fn generate_controller(name: &str) {
     let class_full = format!("{}Controller", base);
 
     let code = format!(
-        r#"use lumina::prelude::*;
+        r#"use pakem::prelude::*;
 use crate::app::models::*;
 
 // =========================================================================
@@ -272,7 +304,7 @@ pub fn generate_model(name: &str) {
     let table = format!("{}s", lower);
 
     let code = format!(
-        r#"use lumina::prelude::*;
+        r#"use pakem::prelude::*;
 use serde::{{Serialize, Deserialize}};
 use sqlx::FromRow;
 
@@ -382,7 +414,7 @@ pub fn generate_crud(name: &str, fields: &[String]) {
 
 fn build_crud_controller(lower: &str, class: &str, _fields: &[String]) -> String {
     format!(
-        r#"use lumina::prelude::*;
+        r#"use pakem::prelude::*;
 use crate::app::models::{lower}::{class};
 
 pub struct {class}Controller;
@@ -448,7 +480,7 @@ pub fn generate_auth() {
             .bold()
     );
 
-    let auth_controller = r#"use lumina::prelude::*;
+    let auth_controller = r#"use pakem::prelude::*;
 use serde::Deserialize;
 
 pub struct AuthController;
@@ -1165,7 +1197,7 @@ pub fn cmd_plugin_list() {
 pub fn cmd_plugin_metrics() {
     println!("{}", "📊 Lumina WASM Sandbox & Plugin Metrics Dashboard\n".bright_cyan().bold());
 
-    let manager = lumina::core::sandbox::LuminaPluginManager::new();
+    let manager = pakem::core::sandbox::LuminaPluginManager::new();
     let loaded = manager.load_directory("plugins").unwrap_or(0);
 
     let metrics = manager.get_metrics();
@@ -1202,7 +1234,7 @@ pub fn cmd_plugin_reload() {
     println!("{}", "🔄 Reloading Lumina WASM Plugins (Zero-Downtime Hot-Reload)...".bright_purple().bold());
     let start = std::time::Instant::now();
 
-    let manager = lumina::core::sandbox::LuminaPluginManager::new();
+    let manager = pakem::core::sandbox::LuminaPluginManager::new();
     match manager.reload("plugins") {
         Ok(count) => {
             let dur = start.elapsed().as_secs_f64() * 1000.0;
@@ -1239,7 +1271,7 @@ pub fn generate_factory(name: &str) {
     let _ = fs::create_dir_all("database/factories");
 
     let code = format!(
-        r#"use lumina::prelude::*;
+        r#"use pakem::prelude::*;
 use crate::app::models::{snake_model}::{model_name};
 
 // =========================================================================
@@ -1325,7 +1357,7 @@ pub fn generate_seeder(name: &str) {
     }
 
     let code = format!(
-        r#"use lumina::prelude::*;
+        r#"use pakem::prelude::*;
 
 // =========================================================================
 //  {seeder_name} (Lumina Database Seeder Class)
@@ -1484,7 +1516,7 @@ pub fn generate_job(name: &str) {
 
     let content = format!(
 r#"use async_trait::async_trait;
-use lumina::prelude::*;
+use pakem::prelude::*;
 use serde::{{Deserialize, Serialize}};
 use serde_json::Value;
 
@@ -1564,7 +1596,7 @@ pub fn generate_live(name: &str) {
 
     let comp_content = format!(
 r#"use async_trait::async_trait;
-use lumina::prelude::*;
+use pakem::prelude::*;
 use serde::{{Deserialize, Serialize}};
 use serde_json::Value;
 
@@ -1757,7 +1789,7 @@ INSERT INTO users (name, email, password, role) VALUES
     println!("  1. Jalankan Migrasi : {}", "lumina migrate".yellow());
     println!("  2. Jalankan Seeder  : {}", "lumina db:seed".yellow());
     println!("  3. Daftarkan router :");
-    println!("     {}", "router.merge(lumina::app::controllers::aurora::routes())".yellow());
+    println!("     {}", "router.merge(pakem::app::controllers::aurora::routes())".yellow());
     println!("\n{}", "🔐 Akun Bawaan (Default Accounts - Password: password123):".bright_magenta().bold());
     println!("  👑 Admin  : admin@lumina.dev  (Role: admin)");
     println!("  ✍️  Editor : editor@lumina.dev (Role: editor)");
@@ -2430,7 +2462,7 @@ Gunakan skill ini untuk memanggil tool `{snake_name}` dengan parameter terverifi
 
     let rust_service_code = if is_reverse_engineer {
         format!(
-            r#"use lumina::prelude::*;
+            r#"use pakem::prelude::*;
 use serde::{{Deserialize, Serialize}};
 use validator::Validate;
 
@@ -2461,7 +2493,7 @@ impl {pascal_name}Tool {{
         )
     } else {
         format!(
-            r#"use lumina::prelude::*;
+            r#"use pakem::prelude::*;
 use serde::{{Deserialize, Serialize}};
 use validator::Validate;
 

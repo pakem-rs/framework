@@ -117,7 +117,7 @@ impl Application {
     pub fn with_global_middleware<L>(mut self, layer: L) -> Self
     where
         L: tower::Layer<axum::routing::Route> + Clone + Send + Sync + 'static,
-        L::Service: tower::Service<axum::extract::Request> + Clone + Send + 'static,
+        L::Service: tower::Service<axum::extract::Request> + Clone + Send + Sync + 'static,
         <L::Service as tower::Service<axum::extract::Request>>::Response:
             axum::response::IntoResponse + 'static,
         <L::Service as tower::Service<axum::extract::Request>>::Error:
@@ -133,7 +133,7 @@ impl Application {
     pub fn with_middleware<L>(self, layer: L) -> Self
     where
         L: tower::Layer<axum::routing::Route> + Clone + Send + Sync + 'static,
-        L::Service: tower::Service<axum::extract::Request> + Clone + Send + 'static,
+        L::Service: tower::Service<axum::extract::Request> + Clone + Send + Sync + 'static,
         <L::Service as tower::Service<axum::extract::Request>>::Response:
             axum::response::IntoResponse + 'static,
         <L::Service as tower::Service<axum::extract::Request>>::Error:
@@ -153,7 +153,7 @@ impl Application {
     pub fn with_web_middleware<L>(mut self, layer: L) -> Self
     where
         L: tower::Layer<axum::routing::Route> + Clone + Send + Sync + 'static,
-        L::Service: tower::Service<axum::extract::Request> + Clone + Send + 'static,
+        L::Service: tower::Service<axum::extract::Request> + Clone + Send + Sync + 'static,
         <L::Service as tower::Service<axum::extract::Request>>::Response:
             axum::response::IntoResponse + 'static,
         <L::Service as tower::Service<axum::extract::Request>>::Error:
@@ -169,7 +169,7 @@ impl Application {
     pub fn with_api_middleware<L>(mut self, layer: L) -> Self
     where
         L: tower::Layer<axum::routing::Route> + Clone + Send + Sync + 'static,
-        L::Service: tower::Service<axum::extract::Request> + Clone + Send + 'static,
+        L::Service: tower::Service<axum::extract::Request> + Clone + Send + Sync + 'static,
         <L::Service as tower::Service<axum::extract::Request>>::Response:
             axum::response::IntoResponse + 'static,
         <L::Service as tower::Service<axum::extract::Request>>::Error:

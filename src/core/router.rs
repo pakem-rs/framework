@@ -44,14 +44,32 @@ where
     }
 
     fn normalize_path(&self, path: &str) -> String {
-        if self.prefix.is_empty() {
-            return path.to_string();
+        let combined = if self.prefix.is_empty() {
+            path.to_string()
+        } else {
+            format!(
+                "{}/{}",
+                self.prefix.trim_end_matches('/'),
+                path.trim_start_matches('/')
+            )
+        };
+
+        // Otomatis konversi sintaks parameter ala Express/Laravel `:param` menjadi `{param}` bawaan Axum 0.8
+        if combined.contains(':') {
+            combined
+                .split('/')
+                .map(|segment| {
+                    if let Some(param) = segment.strip_prefix(':') {
+                        format!("{{{}}}", param)
+                    } else {
+                        segment.to_string()
+                    }
+                })
+                .collect::<Vec<_>>()
+                .join("/")
+        } else {
+            combined
         }
-        format!(
-            "{}/{}",
-            self.prefix.trim_end_matches('/'),
-            path.trim_start_matches('/')
-        )
     }
 
     /// Daftarkan route GET.
@@ -262,7 +280,7 @@ where
     pub fn layer<L>(mut self, layer: L) -> Self
     where
         L: tower::Layer<axum::routing::Route> + Clone + Send + Sync + 'static,
-        L::Service: tower::Service<axum::extract::Request> + Clone + Send + 'static,
+        L::Service: tower::Service<axum::extract::Request> + Clone + Send + Sync + 'static,
         <L::Service as tower::Service<axum::extract::Request>>::Response:
             axum::response::IntoResponse + 'static,
         <L::Service as tower::Service<axum::extract::Request>>::Error:
@@ -278,7 +296,7 @@ where
     pub fn middleware<L>(self, layer: L) -> Self
     where
         L: tower::Layer<axum::routing::Route> + Clone + Send + Sync + 'static,
-        L::Service: tower::Service<axum::extract::Request> + Clone + Send + 'static,
+        L::Service: tower::Service<axum::extract::Request> + Clone + Send + Sync + 'static,
         <L::Service as tower::Service<axum::extract::Request>>::Response:
             axum::response::IntoResponse + 'static,
         <L::Service as tower::Service<axum::extract::Request>>::Error:
@@ -305,7 +323,7 @@ where
         F: Clone + Send + Sync + 'static,
         axum::middleware::FromFnLayer<F, (), T>: tower::Layer<axum::routing::Route> + Clone + Send + Sync + 'static,
         <axum::middleware::FromFnLayer<F, (), T> as tower::Layer<axum::routing::Route>>::Service:
-            tower::Service<axum::extract::Request> + Clone + Send + 'static,
+            tower::Service<axum::extract::Request> + Clone + Send + Sync + 'static,
         <<axum::middleware::FromFnLayer<F, (), T> as tower::Layer<axum::routing::Route>>::Service as tower::Service<axum::extract::Request>>::Response:
             axum::response::IntoResponse + 'static,
         <<axum::middleware::FromFnLayer<F, (), T> as tower::Layer<axum::routing::Route>>::Service as tower::Service<axum::extract::Request>>::Error:
@@ -322,7 +340,7 @@ where
         F: Clone + Send + Sync + 'static,
         axum::middleware::FromFnLayer<F, (), T>: tower::Layer<axum::routing::Route> + Clone + Send + Sync + 'static,
         <axum::middleware::FromFnLayer<F, (), T> as tower::Layer<axum::routing::Route>>::Service:
-            tower::Service<axum::extract::Request> + Clone + Send + 'static,
+            tower::Service<axum::extract::Request> + Clone + Send + Sync + 'static,
         <<axum::middleware::FromFnLayer<F, (), T> as tower::Layer<axum::routing::Route>>::Service as tower::Service<axum::extract::Request>>::Response:
             axum::response::IntoResponse + 'static,
         <<axum::middleware::FromFnLayer<F, (), T> as tower::Layer<axum::routing::Route>>::Service as tower::Service<axum::extract::Request>>::Error:
@@ -339,7 +357,7 @@ where
         F: Clone + Send + Sync + 'static,
         axum::middleware::FromFnLayer<F, (), T>: tower::Layer<axum::routing::Route> + Clone + Send + Sync + 'static,
         <axum::middleware::FromFnLayer<F, (), T> as tower::Layer<axum::routing::Route>>::Service:
-            tower::Service<axum::extract::Request> + Clone + Send + 'static,
+            tower::Service<axum::extract::Request> + Clone + Send + Sync + 'static,
         <<axum::middleware::FromFnLayer<F, (), T> as tower::Layer<axum::routing::Route>>::Service as tower::Service<axum::extract::Request>>::Response:
             axum::response::IntoResponse + 'static,
         <<axum::middleware::FromFnLayer<F, (), T> as tower::Layer<axum::routing::Route>>::Service as tower::Service<axum::extract::Request>>::Error:
@@ -354,7 +372,7 @@ where
     pub fn route_layer<L>(mut self, layer: L) -> Self
     where
         L: tower::Layer<axum::routing::Route> + Clone + Send + Sync + 'static,
-        L::Service: tower::Service<axum::extract::Request> + Clone + Send + 'static,
+        L::Service: tower::Service<axum::extract::Request> + Clone + Send + Sync + 'static,
         <L::Service as tower::Service<axum::extract::Request>>::Response:
             axum::response::IntoResponse + 'static,
         <L::Service as tower::Service<axum::extract::Request>>::Error:
@@ -370,7 +388,7 @@ where
     pub fn route_middleware<L>(self, layer: L) -> Self
     where
         L: tower::Layer<axum::routing::Route> + Clone + Send + Sync + 'static,
-        L::Service: tower::Service<axum::extract::Request> + Clone + Send + 'static,
+        L::Service: tower::Service<axum::extract::Request> + Clone + Send + Sync + 'static,
         <L::Service as tower::Service<axum::extract::Request>>::Response:
             axum::response::IntoResponse + 'static,
         <L::Service as tower::Service<axum::extract::Request>>::Error:

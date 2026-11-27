@@ -115,7 +115,7 @@ impl QueueManager {
         match &self.backend {
             QueueBackend::Database { db, pool_ref } => {
                 let raw_sql = "INSERT INTO jobs (queue, payload) VALUES ('default', ?)";
-                let sql = if let Some(ref p) = pool_ref {
+                let sql = if let Some(p) = pool_ref {
                     p.prepare_sql(raw_sql)
                 } else {
                     raw_sql.to_string()

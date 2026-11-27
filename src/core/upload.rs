@@ -1,6 +1,5 @@
 use crate::core::application::AppState;
 use axum::{
-    async_trait,
     body::Body,
     extract::{FromRequest, Multipart},
     http::Request,
@@ -107,7 +106,6 @@ pub struct PakemMultipart {
     pub files: HashMap<String, Vec<UploadedFile>>,
 }
 
-#[async_trait]
 impl<S> FromRequest<S> for PakemMultipart
 where
     S: Send + Sync,

@@ -83,14 +83,14 @@ async fn handle_live_socket(socket: WebSocket, state: AppState) {
                     match execute_live_call(&state, req).await {
                         Ok(response) => {
                             if let Ok(json_str) = serde_json::to_string(&response) {
-                                let _ = sender.send(Message::Text(json_str)).await;
+                                let _ = sender.send(Message::Text(json_str.into())).await;
                             }
                         }
                         Err(e) => {
                             let err_payload = serde_json::json!({
                                 "error": e.to_string()
                             });
-                            let _ = sender.send(Message::Text(err_payload.to_string())).await;
+                            let _ = sender.send(Message::Text(err_payload.to_string().into())).await;
                         }
                     }
                 }

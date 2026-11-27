@@ -1,4 +1,3 @@
-use async_trait::async_trait;
 use axum::{extract::FromRequestParts, http::request::Parts};
 use serde::{Deserialize, Serialize};
 use tower_sessions::Session;
@@ -105,7 +104,6 @@ impl AuthUser {
 }
 
 /// Implementasi Extractor agar AuthUser bisa langsung disuntikkan ke parameter Controller.
-#[async_trait]
 impl<S> FromRequestParts<S> for AuthUser
 where
     S: Send + Sync,

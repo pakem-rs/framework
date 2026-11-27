@@ -1,7 +1,7 @@
 [package]
 name = "pakem-live"
 version = "1.0.4"
-edition = "2021"
+edition = "2024"
 authors = ["Slamet Sugandi <packercyber@gmail.com>"]
 description = "Server-Driven Reactive UI for Pakem Framework (inspired by Laravel Livewire & Phoenix LiveView)"
 license = "MIT"
@@ -13,7 +13,7 @@ categories = ["web-programming::http-server", "gui"]
 
 [dependencies]
 pakem = { package = "pakem", version = "1.0.4", path = ".." }
-axum = { version = "0.7", features = ["macros", "ws"] }
+axum = { version = "0.8", features = ["macros", "ws"] }
 tokio = { version = "1", features = ["full"] }
 futures = "0.3"
 serde = { version = "1", features = ["derive"] }

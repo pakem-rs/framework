@@ -146,7 +146,10 @@ pub fn run_desktop(port: u16) {
     println!("{}", "🖥️  Starting Pakem Desktop Window...".bright_purple().bold());
     let args = vec!["run", "--bin", "desktop"];
     if port > 0 {
-        std::env::set_var("PORT", port.to_string());
+        // SAFETY: set_var is called in single-threaded CLI context prior to spawning child processes
+        unsafe {
+            std::env::set_var("PORT", port.to_string());
+        }
     }
 
     let status = Command::new("cargo").args(args).status();

@@ -43,7 +43,6 @@ pub fn flash_errors(_session: &tower_sessions::Session, _errors: HashMap<String,
 }
 
 use axum::{
-    async_trait,
     extract::{FromRequest, FromRequestParts, Request},
     response::IntoResponse,
     Json,
@@ -53,7 +52,6 @@ use serde::Serialize;
 
 pub struct ValidatedJson<T>(pub T);
 
-#[async_trait]
 impl<T, S> FromRequest<S> for ValidatedJson<T>
 where
     T: DeserializeOwned + Validate,
@@ -93,7 +91,6 @@ impl IntoResponse for FormValidationRejection {
     }
 }
 
-#[async_trait]
 impl<T, S> FromRequest<S> for ValidatedForm<T>
 where
     T: DeserializeOwned + Serialize + Validate + Send + Sync + 'static,

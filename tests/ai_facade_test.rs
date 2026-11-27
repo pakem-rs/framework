@@ -23,7 +23,9 @@ async fn test_ai_facade_fluent_gemini() {
     // Missing key check
     let no_key_client = Ai::gemini().prompt("Halo");
     // Ensure env is cleared
-    std::env::remove_var("GEMINI_API_KEY");
+    unsafe {
+        std::env::remove_var("GEMINI_API_KEY");
+    }
     let err_no_key = no_key_client.generate().await;
     assert!(err_no_key.is_err());
     match err_no_key.unwrap_err() {
@@ -51,7 +53,9 @@ async fn test_ai_facade_fluent_openai() {
     }
 
     // Missing key check
-    std::env::remove_var("OPENAI_API_KEY");
+    unsafe {
+        std::env::remove_var("OPENAI_API_KEY");
+    }
     let no_key_client = Ai::openai().chat("Halo");
     let err_no_key = no_key_client.generate().await;
     assert!(err_no_key.is_err());
@@ -81,7 +85,9 @@ async fn test_ai_facade_fluent_claude() {
     }
 
     // Missing key check
-    std::env::remove_var("ANTHROPIC_API_KEY");
+    unsafe {
+        std::env::remove_var("ANTHROPIC_API_KEY");
+    }
     let no_key_client = Ai::claude().complete("Halo");
     let err_no_key = no_key_client.generate().await;
     assert!(err_no_key.is_err());

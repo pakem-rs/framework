@@ -52,7 +52,9 @@ async fn test_echo_channel_jwt_authorization() {
     use pakem::core::echo::EchoManager;
     use pakem::http::auth::{generate_token, validate_token};
 
-    std::env::set_var("APP_KEY", "secret-test-key-12345");
+    unsafe {
+        std::env::set_var("APP_KEY", "secret-test-key-12345");
+    }
 
     let echo = EchoManager::new();
 
@@ -110,7 +112,9 @@ async fn test_tenant_operator_jwt_verification() {
     use pakem::core::echo::EchoManager;
     use pakem::http::auth::{generate_token, validate_token};
 
-    std::env::set_var("APP_KEY", "secret-test-key-12345");
+    unsafe {
+        std::env::set_var("APP_KEY", "secret-test-key-12345");
+    }
 
     let echo = EchoManager::new();
 

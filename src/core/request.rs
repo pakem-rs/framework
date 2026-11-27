@@ -1,7 +1,7 @@
 use crate::core::application::AppState;
 use crate::core::auth::AuthUser;
 use crate::core::error::AppError;
-use axum::{async_trait, extract::FromRequestParts, http::request::Parts};
+use axum::{extract::FromRequestParts, http::request::Parts};
 use axum_csrf::CsrfToken;
 use std::collections::HashMap;
 use tower_sessions::Session;
@@ -27,10 +27,9 @@ pub struct Request {
     pub active_tx: std::sync::Arc<tokio::sync::Mutex<Option<crate::database::transaction::Transaction>>>,
 }
 
-#[async_trait]
 impl<S> FromRequestParts<S> for Request
 where
-    AppState: FromRef<S>,
+    AppState: axum::extract::FromRef<S>,
     S: Send + Sync,
 {
     type Rejection = crate::core::error::AppError;
